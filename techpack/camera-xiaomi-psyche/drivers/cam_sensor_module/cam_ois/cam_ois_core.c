@@ -299,12 +299,10 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	uint8_t                           *ptr = NULL;
 	int32_t                            rc = 0, cnt, i;
 	uint32_t                           fw_size;
-	uint32_t                           fw_size_xm;
 	uint32_t                           prog_addr;
 	uint32_t                           coeff_addr;
 	uint32_t                           mem_addr;
 	const struct firmware             *fw = NULL;
-	const struct firmware             *fw_xm = NULL;
 	const char                        *fw_name_prog = NULL;
 	const char                        *fw_name_coeff = NULL;
 	const char                        *fw_name_mem = NULL;
@@ -314,7 +312,6 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	struct device                     *dev = &(o_ctrl->pdev->dev);
 	struct cam_sensor_i2c_reg_setting  i2c_reg_setting;
 	struct page                       *page = NULL;
-	struct page                       *page_xm = NULL;
 
 	if (!o_ctrl) {
 		CAM_ERR(CAM_OIS, "Invalid Args");
@@ -427,30 +424,30 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	}
 
 	/* Load xxx.mem added by xiaomi*/
-	rc = request_firmware(&fw_xm, fw_name_mem, dev);
+	rc = request_firmware(&fw, fw_name_mem, dev);
 	if (rc) {
 		CAM_INFO(CAM_OIS, "no fw named %s, skip", fw_name_mem);
 		rc = 0;
 	} else {
-		total_bytes = fw_xm->size;
+		total_bytes = fw->size;
 		i2c_reg_setting.addr_type = o_ctrl->opcode.fw_addr_type;
 		i2c_reg_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
 		i2c_reg_setting.size = total_bytes;
 		i2c_reg_setting.delay = 0;
-		fw_size_xm = PAGE_ALIGN(sizeof(struct cam_sensor_i2c_reg_array) *
+		fw_size = PAGE_ALIGN(sizeof(struct cam_sensor_i2c_reg_array) *
 			total_bytes) >> PAGE_SHIFT;
-		page_xm = cma_alloc(dev_get_cma_area((o_ctrl->soc_info.dev)),
-			fw_size_xm, 0, GFP_KERNEL);
-		if (!page_xm) {
+		page = cma_alloc(dev_get_cma_area((o_ctrl->soc_info.dev)),
+			fw_size, 0, GFP_KERNEL);
+		if (!page) {
 			CAM_ERR(CAM_OIS, "Failed in allocating i2c_array");
-			release_firmware(fw_xm);
+			release_firmware(fw);
 			return -ENOMEM;
 		}
 
 		i2c_reg_setting.reg_setting = (struct cam_sensor_i2c_reg_array *) (
-			page_address(page_xm));
+			page_address(page));
 
-		for (i = 0, ptr = (uint8_t *)fw_xm->data; i < total_bytes;) {
+		for (i = 0, ptr = (uint8_t *)fw->data; i < total_bytes;) {
 			for (cnt = 0; cnt < OIS_TRANS_SIZE && i < total_bytes;
 				cnt++, ptr++, i++) {
 				i2c_reg_setting.reg_setting[cnt].reg_addr = mem_addr;
@@ -467,10 +464,10 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 				CAM_ERR(CAM_OIS, "OIS FW Memory download failed %d", rc);
 		}
 		cma_release(dev_get_cma_area((o_ctrl->soc_info.dev)),
-			page_xm, fw_size_xm);
-		page_xm = NULL;
-		fw_size_xm = 0;
-		release_firmware(fw_xm);
+			page, fw_size);
+		page = NULL;
+		fw_size = 0;
+		release_firmware(fw);
 	}
 
 release_firmware:
