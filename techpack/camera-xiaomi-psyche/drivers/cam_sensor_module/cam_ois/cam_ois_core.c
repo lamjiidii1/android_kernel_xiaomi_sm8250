@@ -308,7 +308,7 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	char                               name_mem[32] = {0};
 	struct device                     *dev = &(o_ctrl->pdev->dev);
 	struct cam_sensor_i2c_reg_setting  i2c_reg_setting;
-	struct page                       *page = NULL;
+	void                              *vaddr = NULL;
 
 	if (!o_ctrl) {
 		CAM_ERR(CAM_OIS, "Invalid Args");
@@ -338,18 +338,17 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	i2c_reg_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
 	i2c_reg_setting.size = total_bytes;
 	i2c_reg_setting.delay = 0;
-	fw_size = PAGE_ALIGN(sizeof(struct cam_sensor_i2c_reg_array) *
-		total_bytes) >> PAGE_SHIFT;
-	page = cma_alloc(dev_get_cma_area((o_ctrl->soc_info.dev)),
-		fw_size, 0, GFP_KERNEL);
-	if (!page) {
-		CAM_ERR(CAM_OIS, "Failed in allocating i2c_array");
+	fw_size = (sizeof(struct cam_sensor_i2c_reg_array) * total_bytes);
+	vaddr = vmalloc(fw_size);
+	if (!vaddr) {
+		CAM_ERR(CAM_OIS,
+			"Failed in allocating i2c_array: fw_size: %u", fw_size);
 		release_firmware(fw);
 		return -ENOMEM;
 	}
 
 	i2c_reg_setting.reg_setting = (struct cam_sensor_i2c_reg_array *) (
-		page_address(page));
+		vaddr);
 
 	for (i = 0, ptr = (uint8_t *)fw->data; i < total_bytes;) {
 		for (cnt = 0; cnt < OIS_TRANS_SIZE && i < total_bytes;
@@ -369,9 +368,8 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 			goto release_firmware;
 		}
 	}
-	cma_release(dev_get_cma_area((o_ctrl->soc_info.dev)),
-		page, fw_size);
-	page = NULL;
+	vfree(vaddr);
+	vaddr = NULL;
 	fw_size = 0;
 	release_firmware(fw);
 
@@ -386,18 +384,17 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	i2c_reg_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
 	i2c_reg_setting.size = total_bytes;
 	i2c_reg_setting.delay = 0;
-	fw_size = PAGE_ALIGN(sizeof(struct cam_sensor_i2c_reg_array) *
-		total_bytes) >> PAGE_SHIFT;
-	page = cma_alloc(dev_get_cma_area((o_ctrl->soc_info.dev)),
-		fw_size, 0, GFP_KERNEL);
-	if (!page) {
-		CAM_ERR(CAM_OIS, "Failed in allocating i2c_array");
+	fw_size = (sizeof(struct cam_sensor_i2c_reg_array) * total_bytes);
+	vaddr = vmalloc(fw_size);
+	if (!vaddr) {
+		CAM_ERR(CAM_OIS,
+			"Failed in allocating i2c_array: fw_size: %u", fw_size);
 		release_firmware(fw);
 		return -ENOMEM;
 	}
 
 	i2c_reg_setting.reg_setting = (struct cam_sensor_i2c_reg_array *) (
-		page_address(page));
+		vaddr);
 
 	for (i = 0, ptr = (uint8_t *)fw->data; i < total_bytes;) {
 		for (cnt = 0; cnt < OIS_TRANS_SIZE && i < total_bytes;
@@ -427,18 +424,17 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 		i2c_reg_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
 		i2c_reg_setting.size = total_bytes;
 		i2c_reg_setting.delay = 0;
-		fw_size = PAGE_ALIGN(sizeof(struct cam_sensor_i2c_reg_array) *
-			total_bytes) >> PAGE_SHIFT;
-		page = cma_alloc(dev_get_cma_area((o_ctrl->soc_info.dev)),
-			fw_size, 0, GFP_KERNEL);
-		if (!page) {
-			CAM_ERR(CAM_OIS, "Failed in allocating i2c_array");
+		fw_size = (sizeof(struct cam_sensor_i2c_reg_array) * total_bytes);
+	vaddr = vmalloc(fw_size);
+	if (!vaddr) {
+		CAM_ERR(CAM_OIS,
+			"Failed in allocating i2c_array: fw_size: %u", fw_size);
 			release_firmware(fw);
 			return -ENOMEM;
 		}
 
 		i2c_reg_setting.reg_setting = (struct cam_sensor_i2c_reg_array *) (
-			page_address(page));
+			vaddr);
 
 		for (i = 0, ptr = (uint8_t *)fw->data; i < total_bytes;) {
 			for (cnt = 0; cnt < OIS_TRANS_SIZE && i < total_bytes;
@@ -456,18 +452,17 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 			if (rc < 0)
 				CAM_ERR(CAM_OIS, "OIS FW Memory download failed %d", rc);
 		}
-		cma_release(dev_get_cma_area((o_ctrl->soc_info.dev)),
-			page, fw_size);
-		page = NULL;
+			vfree(vaddr);
+	vaddr = NULL;
 		fw_size = 0;
 		release_firmware(fw);
 	}
 
 release_firmware:
-	cma_release(dev_get_cma_area((o_ctrl->soc_info.dev)),
-		page, fw_size);
+	vfree(vaddr);
+	vaddr = NULL;
+	fw_size = 0;
 	release_firmware(fw);
-
 	return rc;
 }
 
