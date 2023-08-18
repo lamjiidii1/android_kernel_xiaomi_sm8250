@@ -299,9 +299,6 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	uint8_t                           *ptr = NULL;
 	int32_t                            rc = 0, cnt, i;
 	uint32_t                           fw_size;
-	uint32_t                           prog_addr;
-	uint32_t                           coeff_addr;
-	uint32_t                           mem_addr;
 	const struct firmware             *fw = NULL;
 	const char                        *fw_name_prog = NULL;
 	const char                        *fw_name_coeff = NULL;
@@ -317,10 +314,6 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 		CAM_ERR(CAM_OIS, "Invalid Args");
 		return -EINVAL;
 	}
-
-	prog_addr = o_ctrl->opcode.prog;
-	coeff_addr = o_ctrl->opcode.coeff;
-	mem_addr = o_ctrl->opcode.memory;
 
 	snprintf(name_coeff, 32, "%s.coeff", o_ctrl->ois_name);
 
@@ -361,14 +354,14 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	for (i = 0, ptr = (uint8_t *)fw->data; i < total_bytes;) {
 		for (cnt = 0; cnt < OIS_TRANS_SIZE && i < total_bytes;
 			cnt++, ptr++, i++) {
-			i2c_reg_setting.reg_setting[cnt].reg_addr = prog_addr;
+			i2c_reg_setting.reg_setting[cnt].reg_addr = o_ctrl->opcode.prog;
 			i2c_reg_setting.reg_setting[cnt].reg_data = *ptr;
 			i2c_reg_setting.reg_setting[cnt].delay = 0;
 			i2c_reg_setting.reg_setting[cnt].data_mask = 0;
 		}
 		i2c_reg_setting.size = cnt;
 		if (o_ctrl->opcode.is_addr_increase)
-			prog_addr += cnt;
+			o_ctrl->opcode.prog += cnt;
 		rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
 			&i2c_reg_setting, 1);
 		if (rc < 0) {
@@ -409,14 +402,14 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	for (i = 0, ptr = (uint8_t *)fw->data; i < total_bytes;) {
 		for (cnt = 0; cnt < OIS_TRANS_SIZE && i < total_bytes;
 			cnt++, ptr++, i++) {
-			i2c_reg_setting.reg_setting[cnt].reg_addr = coeff_addr;
+			i2c_reg_setting.reg_setting[cnt].reg_addr = o_ctrl->opcode.coeff;
 			i2c_reg_setting.reg_setting[cnt].reg_data = *ptr;
 			i2c_reg_setting.reg_setting[cnt].delay = 0;
 			i2c_reg_setting.reg_setting[cnt].data_mask = 0;
 		}
 		i2c_reg_setting.size = cnt;
 		if (o_ctrl->opcode.is_addr_increase)
-			coeff_addr += cnt;
+			o_ctrl->opcode.coeff += cnt;
 		rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
 			&i2c_reg_setting, 1);
 		if (rc < 0)
@@ -450,14 +443,14 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 		for (i = 0, ptr = (uint8_t *)fw->data; i < total_bytes;) {
 			for (cnt = 0; cnt < OIS_TRANS_SIZE && i < total_bytes;
 				cnt++, ptr++, i++) {
-				i2c_reg_setting.reg_setting[cnt].reg_addr = mem_addr;
+				i2c_reg_setting.reg_setting[cnt].reg_addr = o_ctrl->opcode.memory;
 				i2c_reg_setting.reg_setting[cnt].reg_data = *ptr;
 				i2c_reg_setting.reg_setting[cnt].delay = 0;
 				i2c_reg_setting.reg_setting[cnt].data_mask = 0;
 			}
 			i2c_reg_setting.size = cnt;
 			if (o_ctrl->opcode.is_addr_increase)
-				mem_addr += cnt;
+				o_ctrl->opcode.memory += cnt;
 			rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
 				&i2c_reg_setting, 1);
 			if (rc < 0)
