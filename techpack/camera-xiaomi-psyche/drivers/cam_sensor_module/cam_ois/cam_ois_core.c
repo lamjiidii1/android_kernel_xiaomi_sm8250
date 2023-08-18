@@ -303,17 +303,14 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	uint32_t                           prog_addr;
 	uint32_t                           coeff_addr;
 	uint32_t                           mem_addr;
-	uint32_t                           pheripheral_addr;
 	const struct firmware             *fw = NULL;
 	const struct firmware             *fw_xm = NULL;
 	const char                        *fw_name_prog = NULL;
 	const char                        *fw_name_coeff = NULL;
 	const char                        *fw_name_mem = NULL;
-	const char                        *fw_name_ph = NULL;
 	char                               name_prog[32] = {0};
 	char                               name_coeff[32] = {0};
 	char                               name_mem[32] = {0};
-	char                               name_ph[32] = {0};
 	struct device                     *dev = &(o_ctrl->pdev->dev);
 	struct cam_sensor_i2c_reg_setting  i2c_reg_setting;
 	struct page                       *page = NULL;
@@ -327,7 +324,6 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	prog_addr = o_ctrl->opcode.prog;
 	coeff_addr = o_ctrl->opcode.coeff;
 	mem_addr = o_ctrl->opcode.memory;
-	pheripheral_addr = o_ctrl->opcode.pheripheral;
 
 	snprintf(name_coeff, 32, "%s.coeff", o_ctrl->ois_name);
 
@@ -335,13 +331,11 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 
 	snprintf(name_mem, 32, "%s.mem", o_ctrl->ois_name);
 
-	snprintf(name_ph, 32, "%s.ph", o_ctrl->ois_name);
-
 	/* cast pointer as const pointer*/
 	fw_name_prog = name_prog;
 	fw_name_coeff = name_coeff;
 	fw_name_mem = name_mem;
-	fw_name_ph = name_ph;
+
 	/* Load FW */
 	rc = request_firmware(&fw, fw_name_prog, dev);
 	if (rc) {
@@ -478,55 +472,6 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 		fw_size_xm = 0;
 		release_firmware(fw_xm);
 	}
-
-	/* Load xxx.ph added by xiaomi, not used by now*/
-	/*
-	rc = request_firmware(&fw_xm, fw_name_ph, dev);
-	if (rc) {
-		CAM_INFO(CAM_OIS, "Failed to locate %s, not error", fw_name_ph);
-		rc = 0;
-	} else {
-		total_bytes = fw_xm->size;
-		i2c_reg_setting.addr_type = o_ctrl->opcode.fw_addr_type;
-		i2c_reg_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
-		i2c_reg_setting.size = total_bytes;
-		i2c_reg_setting.delay = 0;
-		fw_size_xm = PAGE_ALIGN(sizeof(struct cam_sensor_i2c_reg_array) *
-			total_bytes) >> PAGE_SHIFT;
-		page_xm = cma_alloc(dev_get_cma_area((o_ctrl->soc_info.dev)),
-			fw_size_xm, 0, GFP_KERNEL);
-		if (!page_xm) {
-			CAM_ERR(CAM_OIS, "Failed in allocating i2c_array");
-			release_firmware(fw_xm);
-			return -ENOMEM;
-		}
-
-		i2c_reg_setting.reg_setting = (struct cam_sensor_i2c_reg_array *) (
-			page_address(page_xm));
-
-		for (i = 0, ptr = (uint8_t *)fw_xm->data; i < total_bytes;) {
-				for (cnt = 0; cnt < OIS_TRANS_SIZE && i < total_bytes;
-					cnt++, ptr++, i++) {
-					i2c_reg_setting.reg_setting[cnt].reg_addr = pheripheral_addr;
-					i2c_reg_setting.reg_setting[cnt].reg_data = *ptr;
-					i2c_reg_setting.reg_setting[cnt].delay = 0;
-					i2c_reg_setting.reg_setting[cnt].data_mask = 0;
-				}
-			i2c_reg_setting.size = cnt;
-			if (o_ctrl->opcode.is_addr_increase)
-				pheripheral_addr += cnt;
-			rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
-				&i2c_reg_setting, 1);
-			if (rc < 0)
-				CAM_ERR(CAM_OIS, "OIS FW Memory download failed %d", rc);
-		}
-		cma_release(dev_get_cma_area((o_ctrl->soc_info.dev)),
-			page_xm, fw_size_xm);
-		page_xm = NULL;
-		fw_size_xm = 0;
-		release_firmware(fw_xm);
-	}
-	*/
 
 release_firmware:
 	cma_release(dev_get_cma_area((o_ctrl->soc_info.dev)),
