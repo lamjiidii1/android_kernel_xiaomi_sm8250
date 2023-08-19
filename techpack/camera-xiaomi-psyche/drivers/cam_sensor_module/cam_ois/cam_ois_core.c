@@ -439,7 +439,7 @@ static int cam_default_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	/* Load MEM, this step is not necessary for every ois, so skip load if not exist*/
 	rc = request_firmware(&fw, fw_name_mem, dev);
 	if (rc) {
-		CAM_DBG(CAM_OIS, "Skip to locate %s", fw_name_mem);
+		CAM_ERR(CAM_OIS, "Skip to locate %s", fw_name_mem);
 		return 0;
 	}
 
