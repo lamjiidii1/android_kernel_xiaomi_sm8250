@@ -108,10 +108,13 @@ struct cam_cmd_i2c_info {
 /**
  * struct cam_ois_opcode - Contains OIS opcode
  *
- * @prog            :    OIS FW prog register address
- * @coeff           :    OIS FW coeff register address
- * @pheripheral     :    OIS pheripheral
- * @memory          :    OIS memory
+ * @prog             :    OIS FW prog register address
+ * @coeff            :    OIS FW coeff register address
+ * @pheripheral      :    OIS pheripheral
+ * @memory           :    OIS memory
+ * @fw_addr_type     :    OIS FW addr type
+ * @is_addr_increase :    OIS FW addr increase
+ * others            :    OIS FW Upgrade related.
  */
 struct cam_ois_opcode {
 	uint32_t prog;
@@ -137,6 +140,8 @@ struct cam_ois_opcode {
  * @is_ois_pre_init       :    indicates the pre initialize data is available
  * @ois_name              :    OIS name
  * @opcode                :    opcode
+ * @is_ois_pre_init       :    indicates the pre initialize data is available
+ * @is_ois_post_init      :    indicates the post initialize data is available
  */
 struct cam_cmd_ois_info {
 	uint32_t              slave_addr;
@@ -144,7 +149,10 @@ struct cam_cmd_ois_info {
 	uint8_t               cmd_type;
 	uint8_t               ois_fw_flag;
 	uint8_t               is_ois_calib;
-	uint8_t               is_ois_pre_init; //xiaomi add
+	//xiaomi add begin
+	uint8_t               is_ois_pre_init;
+	uint8_t               is_ois_post_init;
+	//xiaomi add end
 	char                  ois_name[MAX_OIS_NAME_SIZE];
 	struct cam_ois_opcode opcode;
 } __attribute__((packed));
@@ -457,6 +465,7 @@ struct cam_flash_set_on_off {
 	uint8_t     cmd_type;
 	uint16_t    reserved;
 	uint32_t    led_current_ma[CAM_FLASH_MAX_LED_TRIGGERS];
+	uint8_t     is_trigger_eof; // xiaomi add
 } __attribute__((packed));
 
 /**
