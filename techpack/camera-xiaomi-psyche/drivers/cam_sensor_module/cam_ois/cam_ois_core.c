@@ -206,6 +206,49 @@ static int cam_ois_power_down(struct cam_ois_ctrl_t *o_ctrl)
 	return rc;
 }
 
+static int cam_ois_update_time(struct i2c_settings_array *i2c_set)
+{
+	struct i2c_settings_list *i2c_list;
+	int32_t rc = 0;
+	uint32_t size = 0;
+	uint32_t i = 0;
+	uint64_t qtime_ns = 0;
+
+	if (i2c_set == NULL) {
+		CAM_ERR(CAM_OIS, "Invalid Args");
+		return -EINVAL;
+	}
+
+	rc = cam_sensor_util_get_current_qtimer_ns(&qtime_ns);
+	if (rc < 0) {
+		CAM_ERR(CAM_OIS,
+			"Failed to get current qtimer value: %d",
+			rc);
+		return rc;
+	}
+
+	list_for_each_entry(i2c_list,
+		&(i2c_set->list_head), list) {
+		if (i2c_list->op_code ==  CAM_SENSOR_I2C_WRITE_SEQ) {
+			size = i2c_list->i2c_settings.size;
+			/* qtimer is 8 bytes so validate here*/
+			if (size < 8) {
+				CAM_ERR(CAM_OIS, "Invalid write time settings");
+				return -EINVAL;
+			}
+			for (i = 0; i < size; i++) {
+				CAM_DBG(CAM_OIS, "time: reg_data[%d]: 0x%x",
+					i, (qtime_ns & 0xFF));
+				i2c_list->i2c_settings.reg_setting[i].reg_data =
+					(qtime_ns & 0xFF);
+				qtime_ns >>= 8;
+			}
+		}
+	}
+
+	return rc;
+}
+
 static int cam_ois_apply_settings(struct cam_ois_ctrl_t *o_ctrl,
 	struct i2c_settings_array *i2c_set)
 {
@@ -862,7 +905,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				rc = cam_sensor_i2c_command_parser(
 					&o_ctrl->io_master_info,
 					i2c_reg_settings,
-					&cmd_desc[i], 1);
+					&cmd_desc[i], 1, NULL);
 				if (rc < 0) {
 					CAM_ERR(CAM_OIS,
 					"init parsing failed: %d", rc);
@@ -879,7 +922,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				rc = cam_sensor_i2c_command_parser(
 					&o_ctrl->io_master_info,
 					i2c_reg_settings,
-					&cmd_desc[i], 1);
+					&cmd_desc[i], 1, NULL);
 				if (rc < 0) {
 					CAM_ERR(CAM_OIS,
 						"Calib parsing failed: %d", rc);
@@ -898,7 +941,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				rc = cam_sensor_i2c_command_parser(
 					&o_ctrl->io_master_info,
 					i2c_reg_settings,
-					&cmd_desc[i], 1);
+					&cmd_desc[i], 1, NULL);
 				if (rc < 0) {
 					CAM_ERR(CAM_OIS,
 						"pre init settings parsing failed: %d", rc);
@@ -915,7 +958,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				rc = cam_sensor_i2c_command_parser(
 					&o_ctrl->io_master_info,
 					i2c_reg_settings,
-					&cmd_desc[i], 1);
+					&cmd_desc[i], 1, NULL);
 				if (rc < 0) {
 					CAM_ERR(CAM_OIS,
 						"post init settings parsing failed: %d", rc);
@@ -956,7 +999,6 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			}
 		}
 
-		CAM_DBG(CAM_OIS, "apply init settings");
 		rc = cam_ois_apply_settings(o_ctrl, &o_ctrl->i2c_init_data);
 		if ((rc == -EAGAIN) &&
 			(o_ctrl->io_master_info.master_type == CCI_MASTER)) {
@@ -1007,6 +1049,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			rc = 0;
 		}
 		//xiaomi add end
+
 		rc = delete_request(&o_ctrl->i2c_init_data);
 		if (rc < 0) {
 			CAM_WARN(CAM_OIS,
@@ -1036,7 +1079,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		i2c_reg_settings->request_id = 0;
 		rc = cam_sensor_i2c_command_parser(&o_ctrl->io_master_info,
 			i2c_reg_settings,
-			cmd_desc, 1);
+			cmd_desc, 1, NULL);
 		if (rc < 0) {
 			CAM_ERR(CAM_OIS, "OIS pkt parsing failed: %d", rc);
 			return rc;
@@ -1055,6 +1098,121 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			return rc;
 		}
 		break;
+	case CAM_OIS_PACKET_OPCODE_READ: {
+		struct cam_buf_io_cfg *io_cfg;
+		struct i2c_settings_array i2c_read_settings;
+
+		if (o_ctrl->cam_ois_state < CAM_OIS_CONFIG) {
+			rc = -EINVAL;
+			CAM_WARN(CAM_OIS,
+				"Not in right state to read OIS: %d",
+				o_ctrl->cam_ois_state);
+			return rc;
+		}
+		CAM_DBG(CAM_OIS, "number of I/O configs: %d:",
+			csl_packet->num_io_configs);
+		if (csl_packet->num_io_configs == 0) {
+			CAM_ERR(CAM_OIS, "No I/O configs to process");
+			rc = -EINVAL;
+			return rc;
+		}
+
+		INIT_LIST_HEAD(&(i2c_read_settings.list_head));
+
+		io_cfg = (struct cam_buf_io_cfg *) ((uint8_t *)
+			&csl_packet->payload +
+			csl_packet->io_configs_offset);
+
+		/* validate read data io config */
+		if (io_cfg == NULL) {
+			CAM_ERR(CAM_OIS, "I/O config is invalid(NULL)");
+			rc = -EINVAL;
+			return rc;
+		}
+
+		offset = (uint32_t *)&csl_packet->payload;
+		offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
+		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
+		i2c_read_settings.is_settings_valid = 1;
+		i2c_read_settings.request_id = 0;
+		rc = cam_sensor_i2c_command_parser(&o_ctrl->io_master_info,
+			&i2c_read_settings,
+			cmd_desc, 1, &io_cfg[0]);
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS, "OIS read pkt parsing failed: %d", rc);
+			return rc;
+		}
+
+		rc = cam_sensor_i2c_read_data(
+			&i2c_read_settings,
+			&o_ctrl->io_master_info);
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS, "cannot read data rc: %d", rc);
+			delete_request(&i2c_read_settings);
+			return rc;
+		}
+
+		if (csl_packet->num_io_configs > 1) {
+			rc = cam_sensor_util_write_qtimer_to_io_buffer(
+				&io_cfg[1]);
+			if (rc < 0) {
+				CAM_ERR(CAM_OIS,
+					"write qtimer failed rc: %d", rc);
+				delete_request(&i2c_read_settings);
+				return rc;
+			}
+		}
+
+		rc = delete_request(&i2c_read_settings);
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS,
+				"Failed in deleting the read settings");
+			return rc;
+		}
+		break;
+	}
+	case CAM_OIS_PACKET_OPCODE_WRITE_TIME: {
+		if (o_ctrl->cam_ois_state < CAM_OIS_CONFIG) {
+			rc = -EINVAL;
+			CAM_ERR(CAM_OIS,
+				"Not in right state to write time to OIS: %d",
+				o_ctrl->cam_ois_state);
+			return rc;
+		}
+		offset = (uint32_t *)&csl_packet->payload;
+		offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
+		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
+		i2c_reg_settings = &(o_ctrl->i2c_time_data);
+		i2c_reg_settings->is_settings_valid = 1;
+		i2c_reg_settings->request_id = 0;
+		rc = cam_sensor_i2c_command_parser(&o_ctrl->io_master_info,
+			i2c_reg_settings,
+			cmd_desc, 1, NULL);
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS, "OIS pkt parsing failed: %d", rc);
+			return rc;
+		}
+
+		rc = cam_ois_update_time(i2c_reg_settings);
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS, "Cannot update time");
+			return rc;
+		}
+
+		rc = cam_ois_apply_settings(o_ctrl, i2c_reg_settings);
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS, "Cannot apply mode settings");
+			return rc;
+		}
+
+		rc = delete_request(i2c_reg_settings);
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS,
+				"Fail deleting Mode data: rc: %d", rc);
+			return rc;
+		}
+		break;
+	}
 	default:
 		CAM_ERR(CAM_OIS, "Invalid Opcode: %d",
 			(csl_packet->header.op_code & 0xFFFFFF));
