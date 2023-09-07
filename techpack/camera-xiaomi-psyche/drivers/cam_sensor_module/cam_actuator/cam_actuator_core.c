@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -968,8 +968,8 @@ int32_t cam_actuator_driver_cmd(struct cam_actuator_ctrl_t *a_ctrl,
 
 			if (rc < 0)
 				CAM_ERR(CAM_ACTUATOR,
-					"Failed to apply Init settings: rc = %d",
-					rc);
+					"Cannot apply Update settings");
+
 			/* Delete the request even if the apply is failed */
 			rc = delete_request(&a_ctrl->i2c_data.init_settings);
 			if (rc < 0) {

@@ -61,7 +61,6 @@ free_power_settings:
 }
 
 #define OIS_TRANS_SIZE 64
-#define LC124EP3_OIS_TRANS_SIZE 5 * 12
 
 /**
  * cam_ois_get_dev_handle - get device handle
@@ -90,9 +89,14 @@ static int cam_ois_get_dev_handle(struct cam_ois_ctrl_t *o_ctrl,
 	bridge_params.v4l2_sub_dev_flag = 0;
 	bridge_params.media_entity_flag = 0;
 	bridge_params.priv = o_ctrl;
+	bridge_params.dev_id = CAM_OIS;
 
 	ois_acq_dev.device_handle =
 		cam_create_device_hdl(&bridge_params);
+	if (ois_acq_dev.device_handle <= 0) {
+		CAM_ERR(CAM_OIS, "Can not create device handle");
+		return -EFAULT;
+	}
 	o_ctrl->bridge_intf.device_hdl = ois_acq_dev.device_handle;
 	o_ctrl->bridge_intf.session_hdl = ois_acq_dev.session_handle;
 
@@ -160,8 +164,15 @@ static int cam_ois_power_up(struct cam_ois_ctrl_t *o_ctrl)
 	}
 
 	rc = camera_io_init(&o_ctrl->io_master_info);
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_OIS, "cci_init failed: rc: %d", rc);
+		goto cci_failure;
+	}
+
+	return rc;
+cci_failure:
+	if (cam_sensor_util_power_down(power_info, soc_info))
+		CAM_ERR(CAM_OIS, "Power Down failed");
 
 	return rc;
 }
@@ -480,7 +491,7 @@ static int cam_default_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 		rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
 			&i2c_reg_setting, 1);
 		if (rc < 0) {
-			CAM_ERR(CAM_OIS, "OIS FW download failed %d", rc);
+			CAM_ERR(CAM_OIS, "OIS .coeff FW download failed %d", rc);
 			goto release_firmware;
 		}
 	}
@@ -493,7 +504,7 @@ static int cam_default_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	/* Load MEM, this step is not necessary for every ois, so skip load if not exist*/
 	rc = request_firmware(&fw, fw_name_mem, dev);
 	if (rc) {
-		CAM_ERR(CAM_OIS, "Skip to locate %s", fw_name_mem);
+		CAM_DBG(CAM_OIS, "Skip to locate %s", fw_name_mem);
 		return 0;
 	}
 
@@ -532,7 +543,7 @@ static int cam_default_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 		rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
 			&i2c_reg_setting, 1);
 		if (rc < 0) {
-			CAM_ERR(CAM_OIS, "OIS FW download failed %d", rc);
+			CAM_ERR(CAM_OIS, "OIS .mem FW download failed %d", rc);
 			goto release_firmware;
 		}
 	}
@@ -770,19 +781,6 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
     return rc;
 }
 
-struct cam_sensor_i2c_reg_array ois_pm_add_array[]= {
-	{0x30, 0x00, 0x0, 0x0},
-	{0x30, 0x10, 0x0, 0x0},
-	{0x30, 0x00, 0x0, 0x0},
-	{0x30, 0x00, 0x0, 0x0},
-};
-
-struct cam_sensor_i2c_reg_array ois_pm_length_array[]= {
-	{0xF0, 0x0A, 0x0, 0x0},
-	{0xF0, 0x07, 0x0, 0x0},
-	{0xF0, 0x59, 0x0, 0x0},
-};
-
 /**
  * cam_ois_pkt_parse - Parse csl packet
  * @o_ctrl:     ctrl structure
@@ -958,11 +956,10 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 						"pre init settings parsing failed: %d", rc);
 					return rc;
 				}
-			CAM_ERR(CAM_OIS, "is_ois_post_init = %d", o_ctrl->is_ois_post_init);
 			}else if ((o_ctrl->is_ois_post_init != 0) &&
 				(o_ctrl->i2c_post_init_data.is_settings_valid ==
 				0)) {
-				CAM_ERR(CAM_OIS,
+				CAM_DBG(CAM_OIS,
 					"Received post init settings");
 				i2c_reg_settings = &(o_ctrl->i2c_post_init_data);
 				i2c_reg_settings->is_settings_valid = 1;
@@ -993,7 +990,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 
 		//xiaomi add begin
 		if (o_ctrl->is_ois_pre_init) {
-			CAM_ERR(CAM_OIS, "apply pre init settings");
+			CAM_DBG(CAM_OIS, "apply pre init settings");
 			rc = cam_ois_apply_settings(o_ctrl,
 				&o_ctrl->i2c_pre_init_data);
 			if (rc) {
@@ -1004,8 +1001,6 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		//xiaomi add end
 
 		if (o_ctrl->ois_fw_flag) {
-			CAM_ERR(CAM_OIS, "is_addr_indata = %d", o_ctrl->opcode.is_addr_indata);
-			CAM_ERR(CAM_OIS, "apply ois_fw settings");
 			rc = cam_ois_fw_download(o_ctrl);
 			if (rc) {
 				CAM_ERR(CAM_OIS, "Failed OIS FW Download");
@@ -1040,7 +1035,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 
 		//xiaomi add begin
 		if (o_ctrl->is_ois_post_init) {
-			CAM_ERR(CAM_OIS, "apply post init settings");
+			CAM_DBG(CAM_OIS, "apply post init settings");
 			rc = cam_ois_apply_settings(o_ctrl,
 				&o_ctrl->i2c_post_init_data);
 			if (rc) {
@@ -1051,14 +1046,14 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 
 		rc = delete_request(&o_ctrl->i2c_pre_init_data);
 		if (rc < 0) {
-			CAM_ERR(CAM_OIS,
+			CAM_WARN(CAM_OIS,
 				"Fail deleting Pre Init data: rc: %d", rc);
 			rc = 0;
 		}
 
 		rc = delete_request(&o_ctrl->i2c_post_init_data);
 		if (rc < 0) {
-			CAM_ERR(CAM_OIS,
+			CAM_WARN(CAM_OIS,
 				"Fail deleting Post Init data: rc: %d", rc);
 			rc = 0;
 		}

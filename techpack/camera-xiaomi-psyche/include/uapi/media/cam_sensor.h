@@ -121,6 +121,7 @@ struct cam_ois_opcode {
 	uint32_t coeff;
 	uint32_t pheripheral;
 	uint32_t memory;
+	uint32_t ois_get_data;
 	uint8_t  fw_addr_type; //Xiaomi add
 	uint8_t  is_addr_increase; //Xiaomi add
 	uint8_t  is_addr_indata; //Xiaomi add
@@ -140,7 +141,6 @@ struct cam_ois_opcode {
  * @is_ois_pre_init       :    indicates the pre initialize data is available
  * @ois_name              :    OIS name
  * @opcode                :    opcode
- * @is_ois_pre_init       :    indicates the pre initialize data is available
  * @is_ois_post_init      :    indicates the post initialize data is available
  */
 struct cam_cmd_ois_info {
@@ -465,7 +465,6 @@ struct cam_flash_set_on_off {
 	uint8_t     cmd_type;
 	uint16_t    reserved;
 	uint32_t    led_current_ma[CAM_FLASH_MAX_LED_TRIGGERS];
-	uint8_t     is_trigger_eof; // xiaomi add
 } __attribute__((packed));
 
 /**

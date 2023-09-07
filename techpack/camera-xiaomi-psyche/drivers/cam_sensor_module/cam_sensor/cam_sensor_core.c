@@ -188,7 +188,7 @@ static int32_t cam_sensor_i2c_pkt_parse(struct cam_sensor_ctrl_t *s_ctrl,
 		i2c_reg_settings->is_settings_valid = 1;
 		break;
 	}
-case CAM_SENSOR_PACKET_OPCODE_SENSOR_READ: {
+	case CAM_SENSOR_PACKET_OPCODE_SENSOR_READ: {
 		i2c_reg_settings = &(i2c_data->read_settings);
 		i2c_reg_settings->request_id = 0;
 		i2c_reg_settings->is_settings_valid = 1;
@@ -980,8 +980,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 
 			if (rc < 0) {
 				CAM_ERR(CAM_SENSOR,
-					"cannot apply init settings rc= %d",
-					rc);
+					"cannot apply init settings");
 				delete_request(&s_ctrl->i2c_data.init_settings);
 				goto release_mutex;
 			}
@@ -1032,7 +1031,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 					"Fail in deleting the read settings");
 				goto release_mutex;
 			}
-		}
+		}		
 	}
 		break;
 	case CAM_UPDATE_REG: {

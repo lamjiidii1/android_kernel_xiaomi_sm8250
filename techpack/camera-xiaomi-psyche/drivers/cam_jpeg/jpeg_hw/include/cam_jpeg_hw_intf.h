@@ -8,7 +8,6 @@
 
 #include "cam_cpas_api.h"
 
-#define CAM_JPEG_CTX_MAX              8
 #define CAM_JPEG_DEV_PER_TYPE_MAX     1
 
 #define CAM_JPEG_CMD_BUF_MAX_SIZE     128

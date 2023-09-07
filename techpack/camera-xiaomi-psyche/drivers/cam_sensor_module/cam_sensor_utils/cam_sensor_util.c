@@ -256,6 +256,50 @@ static int32_t cam_sensor_handle_continuous_write(
 	return rc;
 }
 
+static int32_t cam_sensor_get_io_buffer(
+	struct cam_buf_io_cfg *io_cfg,
+	struct cam_sensor_i2c_reg_setting *i2c_settings)
+{
+	uintptr_t buf_addr = 0x0;
+	size_t buf_size = 0;
+	int32_t rc = 0;
+
+	if (io_cfg == NULL || i2c_settings == NULL) {
+		CAM_ERR(CAM_SENSOR,
+			"Invalid args, io buf or i2c settings is NULL");
+		return -EINVAL;
+	}
+
+	if (io_cfg->direction == CAM_BUF_OUTPUT) {
+		rc = cam_mem_get_cpu_buf(io_cfg->mem_handle[0],
+			&buf_addr, &buf_size);
+		if ((rc < 0) || (!buf_addr)) {
+			CAM_ERR(CAM_SENSOR,
+				"invalid buffer, rc: %d, buf_addr: %pK",
+				rc, buf_addr);
+			return -EINVAL;
+		}
+		CAM_DBG(CAM_SENSOR,
+			"buf_addr: %pK, buf_size: %zu, offsetsize: %d",
+			(void *)buf_addr, buf_size, io_cfg->offsets[0]);
+		if (io_cfg->offsets[0] >= buf_size) {
+			CAM_ERR(CAM_SENSOR,
+				"invalid size:io_cfg->offsets[0]: %d, buf_size: %d",
+				io_cfg->offsets[0], buf_size);
+			return -EINVAL;
+		}
+		i2c_settings->read_buff =
+			 (uint8_t *)buf_addr + io_cfg->offsets[0];
+		i2c_settings->read_buff_len =
+			buf_size - io_cfg->offsets[0];
+	} else {
+		CAM_ERR(CAM_SENSOR, "Invalid direction: %d",
+			io_cfg->direction);
+		rc = -EINVAL;
+	}
+	return rc;
+}
+
 int32_t cam_sensor_util_write_qtimer_to_io_buffer(
 	struct cam_buf_io_cfg *io_cfg)
 {
@@ -306,44 +350,6 @@ int32_t cam_sensor_util_write_qtimer_to_io_buffer(
 		}
 
 		memcpy((void *)target_buf, &qtime_ns, sizeof(uint64_t));
-	} else {
-		CAM_ERR(CAM_SENSOR, "Invalid direction: %d",
-			io_cfg->direction);
-		rc = -EINVAL;
-	}
-	return rc;
-}
-
-static int32_t cam_sensor_get_io_buffer(
-	struct cam_buf_io_cfg *io_cfg,
-	struct cam_sensor_i2c_reg_setting *i2c_settings)
-{
-	uintptr_t buf_addr = 0x0;
-	size_t buf_size = 0;
-	int32_t rc = 0;
-
-	if (io_cfg->direction == CAM_BUF_OUTPUT) {
-		rc = cam_mem_get_cpu_buf(io_cfg->mem_handle[0],
-			&buf_addr, &buf_size);
-		if ((rc < 0) || (!buf_addr)) {
-			CAM_ERR(CAM_SENSOR,
-				"invalid buffer, rc: %d, buf_addr: %pK",
-				rc, buf_addr);
-			return -EINVAL;
-		}
-		CAM_DBG(CAM_SENSOR,
-			"buf_addr: %pK, buf_size: %zu, offsetsize: %d",
-			(void *)buf_addr, buf_size, io_cfg->offsets[0]);
-		if (io_cfg->offsets[0] >= buf_size) {
-			CAM_ERR(CAM_SENSOR,
-				"invalid size:io_cfg->offsets[0]: %d, buf_size: %d",
-				io_cfg->offsets[0], buf_size);
-			return -EINVAL;
-		}
-		i2c_settings->read_buff =
-			 (uint8_t *)buf_addr + io_cfg->offsets[0];
-		i2c_settings->read_buff_len =
-			buf_size - io_cfg->offsets[0];
 	} else {
 		CAM_ERR(CAM_SENSOR, "Invalid direction: %d",
 			io_cfg->direction);
@@ -480,8 +486,11 @@ static int cam_sensor_handle_slave_info(
 /**
  * Name : cam_sensor_i2c_command_parser
  * Description : Parse CSL CCI packet and apply register settings
- * Parameters :  s_ctrl  input/output    sub_device
- *              arg     input           cam_control
+ * Parameters :  io_master        input  master information
+ *               i2c_reg_settings output register settings to fill
+ *               cmd_desc         input  command description
+ *               num_cmd_buffers  input  number of command buffers to process
+ *               io_cfg           input  buffer details for read operation only
  * Description :
  * Handle multiple I2C RD/WR and WAIT cmd formats in one command
  * buffer, for example, a command buffer of m x RND_WR + 1 x HW_
