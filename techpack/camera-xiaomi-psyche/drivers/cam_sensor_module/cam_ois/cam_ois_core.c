@@ -276,6 +276,17 @@ static int cam_ois_apply_settings(struct cam_ois_ctrl_t *o_ctrl,
 					"Failed in Applying i2c wrt settings");
 				return rc;
 			}
+		} else if (i2c_list->op_code == CAM_SENSOR_I2C_WRITE_SEQ) {
+			rc = camera_io_dev_write_continuous(
+				&(o_ctrl->io_master_info),
+				&(i2c_list->i2c_settings),
+				0);
+			if (rc < 0) {
+				CAM_ERR(CAM_OIS,
+					"Failed to seq write I2C settings: %d",
+					rc);
+				return rc;
+			}
 		} else if (i2c_list->op_code == CAM_SENSOR_I2C_POLL) {
 			size = i2c_list->i2c_settings.size;
 			for (i = 0; i < size; i++) {
