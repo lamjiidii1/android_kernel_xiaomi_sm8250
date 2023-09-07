@@ -947,10 +947,11 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 						"pre init settings parsing failed: %d", rc);
 					return rc;
 				}
+			CAM_ERR(CAM_OIS, "is_ois_post_init = %d", o_ctrl->is_ois_post_init);
 			}else if ((o_ctrl->is_ois_post_init != 0) &&
 				(o_ctrl->i2c_post_init_data.is_settings_valid ==
 				0)) {
-				CAM_DBG(CAM_OIS,
+				CAM_ERR(CAM_OIS,
 					"Received post init settings");
 				i2c_reg_settings = &(o_ctrl->i2c_post_init_data);
 				i2c_reg_settings->is_settings_valid = 1;
@@ -981,7 +982,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 
 		//xiaomi add begin
 		if (o_ctrl->is_ois_pre_init) {
-			CAM_DBG(CAM_OIS, "apply pre init settings");
+			CAM_ERR(CAM_OIS, "apply pre init settings");
 			rc = cam_ois_apply_settings(o_ctrl,
 				&o_ctrl->i2c_pre_init_data);
 			if (rc) {
@@ -992,6 +993,8 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		//xiaomi add end
 
 		if (o_ctrl->ois_fw_flag) {
+			CAM_ERR(CAM_OIS, "is_addr_indata = %d", o_ctrl->opcode.is_addr_indata);
+			CAM_ERR(CAM_OIS, "apply ois_fw settings");
 			rc = cam_ois_fw_download(o_ctrl);
 			if (rc) {
 				CAM_ERR(CAM_OIS, "Failed OIS FW Download");
@@ -1026,7 +1029,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 
 		//xiaomi add begin
 		if (o_ctrl->is_ois_post_init) {
-			CAM_DBG(CAM_OIS, "apply post init settings");
+			CAM_ERR(CAM_OIS, "apply post init settings");
 			rc = cam_ois_apply_settings(o_ctrl,
 				&o_ctrl->i2c_post_init_data);
 			if (rc) {
@@ -1037,14 +1040,14 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 
 		rc = delete_request(&o_ctrl->i2c_pre_init_data);
 		if (rc < 0) {
-			CAM_WARN(CAM_OIS,
+			CAM_ERR(CAM_OIS,
 				"Fail deleting Pre Init data: rc: %d", rc);
 			rc = 0;
 		}
 
 		rc = delete_request(&o_ctrl->i2c_post_init_data);
 		if (rc < 0) {
-			CAM_WARN(CAM_OIS,
+			CAM_ERR(CAM_OIS,
 				"Fail deleting Post Init data: rc: %d", rc);
 			rc = 0;
 		}
