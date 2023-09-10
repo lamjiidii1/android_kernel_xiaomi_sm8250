@@ -855,8 +855,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "PRI_MI2S_UL_HL",
 			.rates = SNDRV_PCM_RATE_8000_48000,
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE),
+				    SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min = 8000,
@@ -872,8 +871,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "PRI_MI2S_DL_HL",
 			.rates = SNDRV_PCM_RATE_8000_384000,
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE),
+				    SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min =     8000,
@@ -889,8 +887,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "SEC_MI2S_UL_HL",
 			.rates = SNDRV_PCM_RATE_8000_48000,
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE),
+				    SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min = 8000,
@@ -905,9 +902,8 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.stream_name = "Secondary MI2S_RX Hostless Playback",
 			.aif_name = "SEC_MI2S_DL_HL",
 			.rates = SNDRV_PCM_RATE_8000_384000,
-			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE),
+			.formats = SNDRV_PCM_FMTBIT_S16_LE |
+				    SNDRV_PCM_FMTBIT_S24_LE,
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min = 8000,
@@ -923,8 +919,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "TERT_MI2S_UL_HL",
 			.rates = SNDRV_PCM_RATE_8000_48000,
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE),
+				    SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min = 8000,
@@ -940,8 +935,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "TERT_MI2S_DL_HL",
 			.rates = SNDRV_PCM_RATE_8000_384000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE,
+				    SNDRV_PCM_FMTBIT_S24_LE,
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min =	8000,
@@ -1549,7 +1543,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.stream_name = "Tertiary TDM0 Hostless Capture",
 			.aif_name = "TERT_TDM_TX_0_UL_HL",
 			.rates = SNDRV_PCM_RATE_8000_48000,
-#if defined(CONFIG_TARGET_PRODUCT_MUNCH)
+#if defined(CONFIG_MACH_XIAOMI_MUNCH)
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
 				    SNDRV_PCM_FMTBIT_S24_LE |
 				    SNDRV_PCM_FMTBIT_S24_3LE),
@@ -1571,7 +1565,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.stream_name = "Tertiary TDM0 Hostless Playback",
 			.aif_name = "TERT_TDM_RX_0_DL_HL",
 			.rates = SNDRV_PCM_RATE_8000_48000,
-#if defined(CONFIG_TARGET_PRODUCT_MUNCH)
+#if defined(CONFIG_MACH_XIAOMI_MUNCH)
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
 				    SNDRV_PCM_FMTBIT_S24_LE |
 				    SNDRV_PCM_FMTBIT_S24_3LE),
