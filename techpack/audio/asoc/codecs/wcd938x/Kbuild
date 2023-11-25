@@ -58,7 +58,6 @@ ifdef CONFIG_SND_SOC_WCD938X
 	WCD938X_OBJS += wcd938x-regmap.o
 	WCD938X_OBJS += wcd938x-tables.o
 	WCD938X_OBJS += wcd938x-mbhc.o
-	WCD938X_OBJS += send_data_to_xlog.o
 endif
 
 ifdef CONFIG_SND_SOC_WCD938X_SLAVE
@@ -112,6 +111,3 @@ wcd938x_dlkm-y := $(WCD938X_OBJS)
 
 obj-$(CONFIG_SND_SOC_WCD938X_SLAVE) += wcd938x_slave_dlkm.o
 wcd938x_slave_dlkm-y := $(WCD938X_SLAVE_OBJS)
-
-# inject some build related information
-DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"
